@@ -137,7 +137,7 @@ fn visit_deleted() {
         .with(CompBool(true))
         .build();
 
-    world.delete_entity(entity_a);
+    world.delete_entity(entity_a).unwrap();
     let mut called = false;
 
     let visit = |_: &specs::ComponentInfo| {

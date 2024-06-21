@@ -441,12 +441,18 @@ impl WorldExt for World {
                     .unwrap_or(Generation::one()),
             });
         }
-        let info = self.fetch::<ComponentInfoTable>();
+        let info_table = self.fetch::<ComponentInfoTable>();
         for storage in self.fetch::<MetaTable<dyn AnyStorage>>().iter(self) {
             if storage.count(&[entity]) > 0 {
-                fun(info
+                let info = info_table
                     .get_by_id(storage.component_id())
-                    .expect("Missing component registration"));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Missing component registration for {}",
+                            storage.component_name()
+                        )
+                    });
+                fun(info);
             }
         }
 

@@ -114,6 +114,8 @@ pub trait AnyStorage {
     fn count(&self, entities: &[Entity]) -> usize;
     /// Return the type id of the component in this storage.
     fn component_id(&self) -> std::any::TypeId;
+    /// Return the type id of the component in this storage.
+    fn component_name(&self) -> &'static str;
 }
 
 // SAFETY: Returned pointer has a vtable valid for `T` and retains the same
@@ -149,6 +151,10 @@ where
 
     fn component_id(&self) -> std::any::TypeId {
         std::any::TypeId::of::<T>()
+    }
+
+    fn component_name(&self) -> &'static str {
+        std::any::type_name::<T>()
     }
 }
 
