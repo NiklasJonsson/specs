@@ -4,6 +4,7 @@ pub use shred::World;
 
 pub use self::{
     comp::Component,
+    compinfo::ComponentInfo,
     entity::{
         CreateIterAtomic, Entities, EntitiesRes, Entity, EntityResBuilder, Generation, Index,
     },
@@ -16,6 +17,7 @@ use shred::{FetchMut, SystemData};
 use crate::storage::WriteStorage;
 
 mod comp;
+mod compinfo;
 mod entity;
 mod lazy;
 #[cfg(test)]

@@ -110,6 +110,10 @@ unsafe impl<'a> ParJoin for AntiStorage<'a> {
 pub trait AnyStorage {
     /// Drop components of given entities.
     fn drop(&mut self, entities: &[Entity]);
+    /// Count how many of the given entities exist in this storage.
+    fn count(&self, entities: &[Entity]) -> usize;
+    /// Return the type id of the component in this storage.
+    fn component_id(&self) -> std::any::TypeId;
 }
 
 // SAFETY: Returned pointer has a vtable valid for `T` and retains the same
@@ -131,6 +135,20 @@ where
         for entity in entities {
             MaskedStorage::drop(self, entity.id());
         }
+    }
+
+    fn count(&self, entities: &[Entity]) -> usize {
+        let mut n = 0;
+        for entity in entities {
+            if MaskedStorage::contains(self, entity.id()) {
+                n += 1;
+            }
+        }
+        n
+    }
+
+    fn component_id(&self) -> std::any::TypeId {
+        std::any::TypeId::of::<T>()
     }
 }
 
@@ -227,6 +245,11 @@ impl<T: Component> MaskedStorage<T> {
                 self.inner.drop(id);
             }
         }
+    }
+
+    /// If the given index exists in this storage.
+    pub fn contains(&self, id: Index) -> bool {
+        self.mask.contains(id)
     }
 }
 

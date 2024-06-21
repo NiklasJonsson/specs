@@ -86,6 +86,111 @@ fn delete_wrong_gen() {
 }
 
 #[test]
+fn visit_single() {
+    let mut world = create_world();
+
+    let entity_a = world.create_entity().with(CompInt(7)).build();
+    let mut found = false;
+    let mut count = 0;
+    let visit = |info: &specs::ComponentInfo| {
+        found |= info.type_name == std::any::type_name::<CompInt>();
+        found |= info.type_id == std::any::TypeId::of::<CompInt>();
+        count += 1;
+    };
+
+    world.visit(entity_a, visit).unwrap();
+    assert!(found);
+    assert_eq!(count, 1);
+}
+
+#[test]
+fn visit_double() {
+    use std::any::TypeId;
+    use std::collections::HashSet;
+
+    let mut world = create_world();
+
+    let entity_a = world
+        .create_entity()
+        .with(CompInt(7))
+        .with(CompBool(true))
+        .build();
+
+    let expected: HashSet<TypeId> =
+        HashSet::from_iter([TypeId::of::<CompBool>(), TypeId::of::<CompInt>()]);
+    let mut found: HashSet<TypeId> = std::collections::HashSet::new();
+
+    let visit = |info: &specs::ComponentInfo| {
+        found.insert(info.type_id);
+    };
+    world.visit(entity_a, visit).unwrap();
+    assert_eq!(found, expected);
+}
+
+#[test]
+fn visit_deleted() {
+    let mut world = create_world();
+
+    let entity_a = world
+        .create_entity()
+        .with(CompInt(7))
+        .with(CompBool(true))
+        .build();
+
+    world.delete_entity(entity_a);
+    let mut called = false;
+
+    let visit = |_: &specs::ComponentInfo| {
+        called = true;
+    };
+    let result = world.visit(entity_a, visit);
+    assert!(!called);
+    assert!(result.is_err());
+}
+
+fn get_single_typeid(world: &specs::World, entity: Entity) -> Option<std::any::TypeId> {
+    let mut type_id = None;
+    let visit = |info: &specs::ComponentInfo| {
+        assert!(type_id.is_none());
+        type_id = Some(info.type_id);
+    };
+
+    world.visit(entity, visit).ok()?;
+    type_id
+}
+
+#[test]
+fn visit_multiple_entities() {
+    use std::any::TypeId;
+    let mut world = create_world();
+
+    let entity_a = world.create_entity().with(CompInt(7)).build();
+    let entity_b = world.create_entity().with(CompBool(true)).build();
+
+    let type_id = get_single_typeid(&world, entity_a);
+    assert_eq!(type_id.unwrap(), TypeId::of::<CompInt>());
+
+    let type_id = get_single_typeid(&world, entity_b);
+    assert_eq!(type_id.unwrap(), TypeId::of::<CompBool>());
+
+    world.delete_entity(entity_a).unwrap();
+
+    let type_id = get_single_typeid(&world, entity_a);
+    assert!(type_id.is_none());
+    let type_id = get_single_typeid(&world, entity_b);
+    assert_eq!(type_id.unwrap(), TypeId::of::<CompBool>());
+
+    let entity_c = world.create_entity().with(CompInt(8)).build();
+
+    let type_id = get_single_typeid(&world, entity_a);
+    assert!(type_id.is_none());
+    let type_id = get_single_typeid(&world, entity_b);
+    assert_eq!(type_id.unwrap(), TypeId::of::<CompBool>());
+    let type_id = get_single_typeid(&world, entity_c);
+    assert_eq!(type_id.unwrap(), TypeId::of::<CompInt>());
+}
+
+#[test]
 fn dynamic_create() {
     struct Sys;
 

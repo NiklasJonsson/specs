@@ -229,7 +229,9 @@ pub use crate::{
         DefaultVecStorage, DenseVecStorage, FlaggedStorage, HashMapStorage, NullStorage,
         ReadStorage, Storage, Tracked, VecStorage, WriteStorage,
     },
-    world::{Builder, Component, Entities, Entity, EntityBuilder, LazyUpdate, WorldExt},
+    world::{
+        Builder, Component, ComponentInfo, Entities, Entity, EntityBuilder, LazyUpdate, WorldExt,
+    },
 };
 
 pub use crate::storage::DerefFlaggedStorage;

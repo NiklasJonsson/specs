@@ -1,7 +1,8 @@
 use super::{
     comp::Component,
+    compinfo::{ComponentInfo, ComponentInfoTable},
     entity::{Allocator, EntitiesRes, Entity},
-    CreateIter, EntityBuilder, LazyUpdate,
+    CreateIter, EntityBuilder, Generation, LazyUpdate,
 };
 
 use crate::{
@@ -293,6 +294,10 @@ pub trait WorldExt {
 
     #[doc(hidden)]
     fn delete_components(&mut self, delete: &[Entity]);
+
+    fn visit<F>(&self, entity: Entity, fun: F) -> Result<(), WrongGeneration>
+    where
+        F: FnMut(&ComponentInfo);
 }
 
 impl WorldExt for World {
@@ -301,6 +306,7 @@ impl WorldExt for World {
         world.insert(EntitiesRes::default());
         world.insert(MetaTable::<dyn AnyStorage>::default());
         world.insert(LazyUpdate::default());
+        world.insert(ComponentInfoTable::default());
 
         world
     }
@@ -319,6 +325,7 @@ impl WorldExt for World {
     {
         self.entry()
             .or_insert_with(move || MaskedStorage::<T>::new(storage()));
+        self.fetch_mut::<ComponentInfoTable>().register::<T>();
         self.fetch_mut::<MetaTable<dyn AnyStorage>>()
             .register::<MaskedStorage<T>>();
     }
@@ -417,5 +424,32 @@ impl WorldExt for World {
         for mut storage in self.fetch_mut::<MetaTable<dyn AnyStorage>>().iter_mut(self) {
             (*storage).drop(delete);
         }
+    }
+
+    fn visit<F>(&self, entity: Entity, mut fun: F) -> Result<(), WrongGeneration>
+    where
+        F: FnMut(&ComponentInfo),
+    {
+        if !self.is_alive(entity) {
+            return Err(WrongGeneration {
+                action: "visit",
+                entity,
+                actual_gen: self
+                    .entities()
+                    .alloc
+                    .generation(entity.id())
+                    .unwrap_or(Generation::one()),
+            });
+        }
+        let info = self.fetch::<ComponentInfoTable>();
+        for storage in self.fetch::<MetaTable<dyn AnyStorage>>().iter(self) {
+            if storage.count(&[entity]) > 0 {
+                fun(info
+                    .get_by_id(storage.component_id())
+                    .expect("Missing component registration"));
+            }
+        }
+
+        Ok(())
     }
 }
